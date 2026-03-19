@@ -7,20 +7,14 @@ import requests
 from PIL import Image
 
 
-def build_payload(image_path: str, prompt: str, workspace: str, proprio_dim: int) -> dict:
+def build_payload(image_path: str, prompt: str) -> dict:
     image = Image.open(image_path).convert("RGB")
     image_np = np.asarray(image, dtype=np.uint8)
-    proprio = np.zeros(proprio_dim, dtype=np.float32)
 
     payload = {
-        "language_instruction": prompt,
-        "image0": json_numpy.dumps(image_np),
-        "proprio": json_numpy.dumps(proprio),
+        "instruction": prompt,
+        "image": json_numpy.dumps(image_np),
     }
-
-    # Optional field; ignored by the server if unused.
-    if workspace:
-        payload["workspace"] = workspace
 
     return payload
 
@@ -46,17 +40,13 @@ def main() -> None:
     parser.add_argument("--url", default="http://localhost:9090/act", help="XVLA endpoint URL")
     parser.add_argument("--image", required=True, help="Path to input image")
     parser.add_argument("--prompt", required=True, help="Language instruction")
-    parser.add_argument("--workspace", default="", help="Optional workspace flag to include")
-    parser.add_argument("--proprio-dim", type=int, default=8, help="Proprio vector length")
     parser.add_argument("--connect-timeout", type=float, default=5.0)
     parser.add_argument("--read-timeout", type=float, default=300.0)
     args = parser.parse_args()
 
-    payload = build_payload(args.image, args.prompt, args.workspace, args.proprio_dim)
+    payload = build_payload(args.image, args.prompt)
 
     print(f"Sending request to {args.url}")
-    if args.workspace:
-        print(f"Workspace flag: {args.workspace}")
     print(f"Timeouts => connect: {args.connect_timeout}s, read: {args.read_timeout}s")
 
     started = time.time()

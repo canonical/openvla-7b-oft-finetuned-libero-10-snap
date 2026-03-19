@@ -65,7 +65,7 @@ python3 test_xvla.py \
   --prompt "pick up the blue block"
 ```
 
-Or send JSON directly (payload uses `language_instruction`, `image0`, optional `proprio`).
+Or send JSON directly (payload uses `instruction`, `image`).
 
 ### FastAPI Multipart Endpoint
 

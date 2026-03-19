@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import io
 
 import numpy as np
@@ -16,7 +17,7 @@ from experiments.robot.openvla_utils import (
 )
 from prismatic.vla.constants import NUM_ACTIONS_CHUNK, PROPRIO_DIM
 
-app = FastAPI()
+app = None
 model = None
 processor = None
 action_head = None
@@ -33,14 +34,16 @@ class SimpleConfig:
         self.load_in_8bit = False
         self.load_in_4bit = False
         self.num_images_in_input = 1
+        # TODO: External proprio API is pending; we currently use internal
+        # zero-state placeholders required by openvla_utils.
         self.use_proprio = True
         self.center_crop = True
         self.num_open_loop_steps = NUM_ACTIONS_CHUNK
         self.unnorm_key = unnorm_key
 
 
-@app.on_event("startup")
-def load_vla():
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
     global model, processor, action_head, proprio_projector, cfg
 
     cfg = SimpleConfig(args.model_path, unnorm_key=args.unnorm_key)
@@ -56,8 +59,13 @@ def load_vla():
 
     processor = get_processor(cfg)
     action_head = get_action_head(cfg, model.llm_dim).to(args.device)
+    # TODO: make proprio handling configurable once schema is finalized.
     proprio_projector = get_proprio_projector(cfg, llm_dim=model.llm_dim, proprio_dim=PROPRIO_DIM).to(args.device)
     model.eval()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/act")
@@ -67,11 +75,21 @@ async def predict_action(text: str = Form(...), image: UploadFile = File(...)):
 
     observation = {
         "full_image": np.array(img),
+        # TODO: replace with user-provided/stateful proprio once API is defined.
         "state": np.zeros(PROPRIO_DIM, dtype=np.float32),
     }
 
     with torch.inference_mode():
-        actions = get_vla_action(cfg, model, processor, observation, text, action_head, proprio_projector)
+        actions = get_vla_action(
+            cfg,
+            model,
+            processor,
+            observation,
+            text,
+            action_head=action_head,
+            proprio_projector=proprio_projector,
+            use_film=cfg.use_film,
+        )
 
     action = actions[0]
     return {

@@ -110,6 +110,11 @@ parts:
   pytorch-runtime-cpu:
     plugin: python
     source: components/pytorch-cpu
+    override-build: |
+      set -eux
+      rm -rf "$CRAFT_PART_INSTALL"
+      mkdir -p "$CRAFT_PART_INSTALL"
+      craftctl default
     build-environment:
       - PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
     python-packages:
@@ -150,6 +155,11 @@ parts:
   pytorch-runtime-cuda:
     plugin: python
     source: components/pytorch-cuda
+    override-build: |
+      set -eux
+      rm -rf "$CRAFT_PART_INSTALL"
+      mkdir -p "$CRAFT_PART_INSTALL"
+      craftctl default
     build-environment:
       - PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cu121
     python-packages:

@@ -31,6 +31,7 @@ parser.add_argument("--device", type=str, default=os.environ.get("DEVICE", "cpu"
 parser.add_argument("--unnorm_key", type=str, default=os.environ.get("UNNORM_KEY", ""))
 parser.add_argument("--num_images", type=int, default=int(os.environ.get("NUM_IMAGES", "1")))
 parser.add_argument("--use_proprio", type=lambda v: v.lower() != "false", default=os.environ.get("USE_PROPRIO", "true").lower() != "false")
+parser.add_argument("--proprio_dim", type=int, default=int(os.environ.get("PROPRIO_DIM", str(PROPRIO_DIM))))
 args, _ = parser.parse_known_args()
 
 model = None
@@ -78,21 +79,15 @@ async def lifespan(app: FastAPI):
     if cfg.unnorm_key not in model.norm_stats:
         raise RuntimeError(f"Invalid unnorm_key '{cfg.unnorm_key}'. Available keys: {list(model.norm_stats.keys())}")
 
-    proprio_stats = model.norm_stats.get(cfg.unnorm_key, {}).get("proprio", {})
-    for key in ("q01", "q99", "min", "max"):
-        if key in proprio_stats:
-            expected_proprio_dim = int(np.asarray(proprio_stats[key]).reshape(-1).shape[0])
-            break
-    if expected_proprio_dim is None:
-        expected_proprio_dim = int(PROPRIO_DIM)
-
     processor = get_processor(cfg)
     action_head = get_action_head(cfg, model.llm_dim).to(args.device)
-    proprio_projector = get_proprio_projector(
-        cfg,
-        llm_dim=model.llm_dim,
-        proprio_dim=expected_proprio_dim,
-    ).to(args.device)
+
+    # TODO: External proprio API is pending; for now we keep an internal
+    # placeholder state/projector required by openvla_utils.
+    if cfg.use_proprio:
+        logging.warning("USE_PROPRIO input handling is TODO; using internal zero-state placeholder.")
+    expected_proprio_dim = int(PROPRIO_DIM)
+    proprio_projector = get_proprio_projector(cfg, llm_dim=model.llm_dim, proprio_dim=expected_proprio_dim).to(args.device)
 
     model.eval()
     model_ready = True
@@ -141,53 +136,33 @@ def deserialize_image_payload(image_payload):
     return Image.fromarray(image_array).convert("RGB")
 
 
+def get_instruction(payload: dict) -> str:
+    instruction = payload.get("instruction") or payload.get("language_instruction")
+    if instruction is None:
+        raise ValueError("Missing field: instruction")
+    if not isinstance(instruction, str) or not instruction.strip():
+        raise ValueError("Instruction must be a non-empty string")
+    return instruction
+
+
+def get_primary_image(payload: dict):
+    for key in ("image", "image0", "full_image"):
+        if key in payload:
+            return deserialize_image_payload(payload[key])
+    raise ValueError("Missing field: image")
+
+
 @app.post("/act")
 def predict_action(payload: dict):
     try:
-        if "language_instruction" not in payload and "instruction" not in payload:
-            return JSONResponse({"error": "Missing field: language_instruction"}, status_code=400)
+        instruction = get_instruction(payload)
+        image = get_primary_image(payload)
 
-        primary_key = "image0" if "image0" in payload else ("full_image" if "full_image" in payload else None)
-        if primary_key is None:
-            return JSONResponse({"error": "No image provided. Include at least image0."}, status_code=400)
-
-        images = [
-            deserialize_image_payload(payload[key])
-            for key in ("image0", "image1", "image2")
-            if key in payload
-        ]
-        if not images:
-            images = [deserialize_image_payload(payload[primary_key])]
-
-        # XVLA request uses image0/image1/image2. OpenVLA-OFT expects observation
-        # keys full_image/wrist_image/wrist_image2, so we map to that layout.
-        observation = {"full_image": np.array(images[0])}
-        if len(images) > 1:
-            observation["wrist_image"] = np.array(images[1])
-        if len(images) > 2:
-            observation["wrist_image2"] = np.array(images[2])
-
-        # External API accepts XVLA naming (`proprio`). Internally, OpenVLA-OFT
-        # inference expects observation["state"], so we normalize into that shape.
-        proprio_payload = payload.get("proprio")
-        if proprio_payload is not None:
-            state = np.asarray(
-                json_numpy.loads(proprio_payload) if isinstance(proprio_payload, str) else proprio_payload,
-                dtype=np.float32,
-            ).reshape(-1)
-        elif "state" in payload:
-            raw_state = payload["state"]
-            state = np.asarray(json_numpy.loads(raw_state) if isinstance(raw_state, str) else raw_state, dtype=np.float32).reshape(-1)
-        else:
-            state = np.zeros(expected_proprio_dim, dtype=np.float32)
-
-        if state.shape[0] != expected_proprio_dim:
-            raise ValueError(
-                f"Invalid proprio/state length {state.shape[0]}; expected {expected_proprio_dim} for unnorm_key '{cfg.unnorm_key}'"
-            )
-
-        observation["state"] = state
-        instruction = payload.get("language_instruction") or payload.get("instruction")
+        observation = {
+            "full_image": np.array(image),
+            # TODO: replace with user-provided/stateful proprio once API is defined.
+            "state": np.zeros(expected_proprio_dim, dtype=np.float32),
+        }
 
         with torch.inference_mode():
             actions = get_vla_action(

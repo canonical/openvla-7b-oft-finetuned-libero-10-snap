@@ -1,6 +1,17 @@
 #!/bin/bash -eux
 
 PORT="$(modelctl get http.port)"
+UNNORM_KEY="$(modelctl get model.unnorm_key 2>/dev/null || true)"
+NUM_IMAGES="$(modelctl get model.num_images 2>/dev/null || true)"
+USE_PROPRIO="$(modelctl get model.use_proprio 2>/dev/null || true)"
+PROPRIO_DIM="$(modelctl get model.proprio_dim 2>/dev/null || true)"
+USER_CONFIG="$(modelctl get model.user_config 2>/dev/null || true)"
+
+UNNORM_KEY="${UNNORM_KEY:-}"
+NUM_IMAGES="${NUM_IMAGES:-1}"
+USE_PROPRIO="${USE_PROPRIO:-true}"
+PROPRIO_DIM="${PROPRIO_DIM:-}"
+USER_CONFIG="${USER_CONFIG:-}"
 
 if [[ ! -f "$INTERFACE_SERVER" ]]; then
   echo "Interface server entrypoint not found: $INTERFACE_SERVER"
@@ -19,4 +30,9 @@ fi
 exec "$SNAP_COMPONENTS/pytorch-cpu/bin/python3" "$INTERFACE_SERVER" \
   --model_path "$MODEL_FILE" \
   --port "$PORT" \
-  --device "cpu"
+  --device "cpu" \
+  --unnorm_key "$UNNORM_KEY" \
+  --num_images "$NUM_IMAGES" \
+  --use_proprio "$USE_PROPRIO" \
+  --proprio_dim "${PROPRIO_DIM:-10}" \
+  --user_config "$USER_CONFIG"

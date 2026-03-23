@@ -1,6 +1,11 @@
 #!/bin/bash -eu
 
 modelctl set --package http.port="9090"
+modelctl set --package model.unnorm_key=""
+modelctl set --package model.num_images="1"
+modelctl set --package model.use_proprio="true"
+modelctl set --package model.proprio_dim="10"
+modelctl set --package model.user_config=""
 
 if snapctl is-connected hardware-observe; then
     modelctl use-engine --auto --assume-yes

@@ -57,6 +57,38 @@ sudo snap logs -f openvla-oft-finetuned-libero-10.server
 
 Default serving port is managed by modelctl config (`http.port`, usually `9090`).
 
+## XVLA Runtime Configuration
+
+For XVLA engines, model behavior can be configured via `modelctl`:
+
+```bash
+sudo openvla-oft-finetuned-libero-10 set model.unnorm_key=""
+sudo openvla-oft-finetuned-libero-10 set model.num_images="1"
+sudo openvla-oft-finetuned-libero-10 set model.use_proprio="true"
+sudo openvla-oft-finetuned-libero-10 set model.proprio_dim="10"
+sudo openvla-oft-finetuned-libero-10 set model.user_config=""
+```
+
+Optional JSON user config can override these values (when set in `model.user_config`).
+Supported JSON shapes are either flat or nested under `model`:
+
+```json
+{
+  "model": {
+    "unnorm_key": "libero_task",
+    "num_images": 1,
+    "use_proprio": true,
+    "proprio_dim": 10
+  }
+}
+```
+
+Precedence for XVLA is:
+
+1. Built-in defaults
+2. `modelctl` values
+3. User JSON config (`model.user_config`) if present
+
 ## Call The API
 
 ### XVLA JSON Endpoint
@@ -85,3 +117,11 @@ curl -X POST "http://localhost:9090/act" \
 ## Resources
 
 - [Inference Snaps documentation](https://documentation.ubuntu.com/inference-snaps/)
+
+## Unit Tests
+
+Run Python unit tests for XVLA server logic:
+
+```bash
+pytest tests/unit -v
+```

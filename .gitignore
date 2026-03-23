@@ -5,3 +5,9 @@ stage/
 prime/
 *.snap
 *.comp
+
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

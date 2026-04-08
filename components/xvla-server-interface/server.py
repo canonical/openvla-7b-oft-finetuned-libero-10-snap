@@ -3,6 +3,7 @@ import contextlib
 import io
 import logging
 import os
+import sys
 import traceback
 
 import json_numpy
@@ -12,6 +13,17 @@ import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from PIL import Image
+
+import sys
+from unittest.mock import MagicMock
+
+# Create a dummy module for tensorflow_graphics
+# This module is imported by openvla_utils but is not actually used for inference,
+# so we can mock it to avoid adding it as a dependency.
+mock_tf = MagicMock()
+sys.modules["tensorflow_graphics"] = mock_tf
+sys.modules["tensorflow_graphics.geometry"] = mock_tf
+sys.modules["tensorflow_graphics.geometry.transformation"] = mock_tf
 
 from experiments.robot.openvla_utils import (
     get_action_head,

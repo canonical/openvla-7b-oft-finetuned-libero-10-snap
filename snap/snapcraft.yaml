@@ -95,7 +95,6 @@ parts:
       set -eux
       craftctl default
       patch --forward -p1 -d "$CRAFT_PART_INSTALL" < "$CRAFT_PROJECT_DIR/patches/openvla-oft-cpu.patch" || true
-      grep -n 'DEVICE = torch.device("cpu")' "$CRAFT_PART_INSTALL/experiments/robot/openvla_utils.py"
       grep -n 'state_dict = torch.load(checkpoint_path, weights_only=True, map_location="cpu")' "$CRAFT_PART_INSTALL/experiments/robot/openvla_utils.py"
     prime:
       - -bin/**
@@ -136,7 +135,6 @@ parts:
       - wandb
       - tensorflow==2.15.0
       - tensorflow_datasets==4.9.3
-      - tensorflow_graphics==2021.12.3
       - git+https://github.com/moojink/dlimp_openvla
       - diffusers==0.30.3
       - imageio

@@ -11,6 +11,13 @@ The snap package name in `snap/snapcraft.yaml` is:
 
 ## Build From Source
 
+Install and initialize Git LFS first (required for large model files tracked with LFS):
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git-lfs
+```
+
 Clone the repository:
 
 ```shell

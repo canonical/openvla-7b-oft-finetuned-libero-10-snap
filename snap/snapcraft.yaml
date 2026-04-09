@@ -161,15 +161,27 @@ parts:
     build-environment:
       - PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cu121
     python-packages:
-      - torch>=2.2.0
-      - torchvision>=0.16.0
-      - torchaudio>=2.2.0
+      - torch==2.2.0
+      - torchvision==0.17.0
+      - torchaudio==2.2.0
+      - accelerate>=0.25.0
+      - draccus==0.8.0
       - timm==0.9.10
       - tokenizers==0.19.1
       - sentencepiece==0.1.99
       - peft==0.11.1
       - einops
-      - accelerate
+      - huggingface_hub
+      - jsonlines
+      - matplotlib
+      - protobuf
+      - rich
+      - wandb
+      - tensorflow==2.15.0
+      - tensorflow_datasets==4.9.3
+      - git+https://github.com/moojink/dlimp_openvla
+      - diffusers==0.30.3
+      - imageio
       - fastapi
       - uvicorn
       - python-multipart
